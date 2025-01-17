@@ -10,7 +10,7 @@ def run_config(led_conf_list, daw_conf_list):
         print('configuration error')
         return
     for i in range(len_sau):
-        run.run_daq(sauration_run_list[i], DAW_config_list[i])
+        run.run_daq(led_conf_list[i], daw_conf_list[i])
         time.sleep(10)
 
 
