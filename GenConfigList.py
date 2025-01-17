@@ -134,7 +134,7 @@ def generate_saturation_output_filename(
     run_tage (str): --> some str to tag this run;
     date (int): --> date of the date taking,  [20250116] for example;
     """
-    output_name = f'lv2414_{ch0_attenuation_factor}_lv2415_{ch1_attenuation_factor}_combine_{date}_{voltage}_calibration_{trig_rate}_{run_tag}_run0'
+    output_name = f'lv2414_{ch0_attenuation_factor}_lv2415_{ch1_attenuation_factor}_combine_{date}_{voltage}v_calibration_{trig_rate}_{run_tag}_run0'
     # print(output_name)
     return output_name
         
@@ -173,7 +173,7 @@ def generate_time_constant_output_filename(
     run_tage (str): --> some str to tag this run;
     date (int): --> date of the date taking,  [20250116] for example;
     """
-    output_name = f'lv2414_{ch0_attenuation_factor}_lv2415_{ch1_attenuation_factor}_combine_{date}_{voltage}_{offset}mv_{Ch2_voltage}_{offset_ch2}mv_{delta_time}us_{trig_rate}_{run_tag}_run0'
+    output_name = f'lv2414_{ch0_attenuation_factor}_lv2415_{ch1_attenuation_factor}_combine_{date}_{voltage}v_{offset}v_{Ch2_voltage}v_{offset_ch2}v_{delta_time}us_{trig_rate}_{run_tag}_run0'
     # print(output_name)
     return output_name
         
