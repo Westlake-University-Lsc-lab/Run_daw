@@ -18,7 +18,7 @@ if [ -s tmp.csv ]; then
         if [[ $user == "$USER_TO_CHECK" ]]; then  
             echo "User: $user, process $command, status: $stat"
         fi
-    done > processed_output.csv 
+    done
 else
     echo "Do not find$COMMAND_TO_CHECK process running."
 fi
