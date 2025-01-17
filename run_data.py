@@ -3,6 +3,17 @@ import RunDAQ as run
 import sys
 
 
+def run_config(led_conf_list, daw_conf_list):
+    len_sau = len(led_conf_list)
+    len_daw = len(daw_conf_list)
+    if len_sau != len_daw:
+        print('configuration error')
+        return
+    for i in range(len_sau):
+        run.run_daq(sauration_run_list[i], DAW_config_list[i])
+        time.sleep(10)
+
+
 def main():
     
     if len(sys.argv) != 3:        
@@ -53,7 +64,7 @@ def main():
         print('------------Daw Config list Done----------------------')
         
         print('------------Run DAQ-----------------')
-        # run.run_config(LED_Conf, DAW_Conf)
+        run_config(LED_Conf, DAW_Conf)
 
     elif runType == 'time_const':
         voltages = time_const_voltages
@@ -87,7 +98,7 @@ def main():
             print('------------Daw Config list Done----------------------')
             
             print('------------Run DAQ-----------------')
-            # run.run_config(LED_Conf, DAW_Conf)
+            run_config(LED_Conf, DAW_Conf)
     else:
         print('runType error')
         return
