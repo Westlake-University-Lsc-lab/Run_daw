@@ -1,7 +1,7 @@
 import GenConfigList as gen
 import RunDAQ as run
 import sys
-
+import time
 
 def run_config(led_conf_list, daw_conf_list):
     len_sau = len(led_conf_list)
