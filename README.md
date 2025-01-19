@@ -1,6 +1,6 @@
 # Run_daw
 
-Run DAQ and config pulse generator by auto.
+Run DAQ and config pulse generator by auto. 
 
 #### to install the package, run the following command in terminal:
 
