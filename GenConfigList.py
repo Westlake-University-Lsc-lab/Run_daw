@@ -21,6 +21,7 @@ def generate_configure_list(env, py_file, led_configs=None, daw_configs=None):
                 led_config.get('synch_ch', 'CH1'),  # default CH1 for Synchronize Channel
                 str(led_config.get('combine_mode', 'False')),  # Convert to lower case string
                 str(led_config.get('Ch2_option', 'False')),  # Convert to lower case string for consistency
+                str(led_config.get('LongS2_option', 'False')),  # Convert to lower case string for consistency
             ]
             Conf_List.append(config_row)
                 
@@ -36,7 +37,7 @@ def generate_configure_list(env, py_file, led_configs=None, daw_configs=None):
                 str(daw_config.get('output_file')),  # output file as str
             ]
             Conf_List.append(config_row)
-    # print(Conf_List)
+    print(Conf_List)
     return Conf_List
 
 def generate_led_configs(
@@ -45,7 +46,8 @@ def generate_led_configs(
         delta_time: Union[int, None] = None,
         synch_ch: str='CH1',
         combine_mode: str='True',
-        Ch2_option: str='False'
+        Ch2_option: str='False',
+        LongS2_option: str='False',
 ):
     """
     generator LED config list
@@ -68,9 +70,10 @@ def generate_led_configs(
             'synch_ch': synch_ch,
             'combine_mode': combine_mode,
             'Ch2_option':Ch2_option,
+            'LongS2_option':LongS2_option
         }
         led_configs.append(config)
-    # print(led_configs)
+    print(led_configs)
     return led_configs
 
 
@@ -101,7 +104,7 @@ def generate_daw_config(
             'output_file': output_file
         }
         daw_configs.append(daw_config)
-    # print(daw_configs)
+    print(daw_configs)
     return daw_configs
 
 def generate_saturation_output_filename(
@@ -116,6 +119,10 @@ def generate_saturation_output_filename(
         trig_rate = '1kHz'
     elif trig == 50:
         trig_rate = '50Hz'
+    elif trig == 10:
+        trig_rate = '10Hz'
+    else:
+        trig_rate = 'unknown'
         
     voltage = str(voltages).replace('.','p')
     
@@ -135,7 +142,7 @@ def generate_saturation_output_filename(
     date (int): --> date of the date taking,  [20250116] for example;
     """
     output_name = f'lv2414_{ch0_attenuation_factor}_lv2415_{ch1_attenuation_factor}_combine_{date}_{voltage}v_calibration_{trig_rate}_{run_tag}_run0'
-    # print(output_name)
+    print(output_name)
     return output_name
         
 
@@ -174,6 +181,46 @@ def generate_time_constant_output_filename(
     date (int): --> date of the date taking,  [20250116] for example;
     """
     output_name = f'lv2414_{ch0_attenuation_factor}_lv2415_{ch1_attenuation_factor}_combine_{date}_{voltage}v_{offset}v_{Ch2_voltage}v_{offset_ch2}v_{delta_time}us_{trig_rate}_{run_tag}_run0'
-    # print(output_name)
+    print(output_name)
     return output_name
+
+
+def generate_long_s2_output_filename(
+        ch0_attenuation_factor: str='DB',
+        ch1_attenuation_factor: str='DB', 
+        voltages: float=1.40,
+        trig: int=10,
+        run_tag: str='long_s2',
+        date: str='20150116',        
+):
+    if trig == 1000:
+        trig_rate = '1kHz'
+    elif trig == 50:
+        trig_rate = '50Hz'
+    elif trig == 10:
+        trig_rate = '10Hz'
+    else:
+        trig_rate = 'unknown'
+        
+    voltage = str(voltages).replace('.','p')
+    
+    if date is None:
+        now = datetime.now()
+        date = now.strftime('%Y%m%d')
+        
+    """
+    generate output filename
+    
+    Parameters:
+    ch0_attenuation_fact (str): --> '20DB', '9DB'
+    ch1_attenuation_fact (str): --> '9DB', '0DB'
+    voltages (str): should be vector or list of float type, it config the amplitude of CH1, amplitude of CH2 should be fixed to 1.36V;
+    trig (int):  --> 1000, or 50, 
+    run_tage (str): --> some str to tag this run;
+    date (int): --> date of the date taking,  [20250116] for example;
+    """
+    output_name = f'lv2414_{ch0_attenuation_factor}_lv2415_{ch1_attenuation_factor}_combine_{date}_{voltage}v_calibration_{trig_rate}_{run_tag}_run0'
+    print(output_name)
+    return output_name
+        
         

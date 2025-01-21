@@ -14,12 +14,17 @@ def configure_waveform_generator(
     delay: int = 5,
     sync: str = "CH2",
     comb=True,
-    C2_ON=True,
+    C2_ON=False,
+    LongS2=False,
 ):
     afg = WaveGenerator(ip, port)
     if sync == "CH1":
         SYNC_CH = sync
         afg.send("C1:SYNC ON, TYPE,{}".format(SYNC_CH))
+        if LongS2 is True:
+            width = 200.E-6
+        else:
+            width = 150.E-9
 
     elif sync == "CH2":
         SYNC_CH = sync
@@ -54,7 +59,7 @@ def configure_waveform_generator(
         r"C1:BSWV AMP,{}".format(amp),  # 幅度配置为1.8V
         r"C1:BSWV OFST,{}".format(amp / 2.0),  # 偏移量配置为900 mV (即0.9 V)
         # "C1:BSWV WIDTH,200.E-6",  # S2脉冲宽度固定为200us
-        "C1:BSWV WIDTH,150.E-9",  # S1脉冲宽度固定为150纳秒 (ns)
+        r"C1:BSWV WIDTH,{}".format(width),  # S1脉冲宽度固定为150纳秒 (ns)
         "C2:BSWV WIDTH,1000.E-9",  # S2脉冲宽度固定为1us
         "C1:BSWV RISE, 1.E-9",  # 上升时间固定为1纳秒 (ns)
         "C2:BSWV RISE, 1.E-9",  # 上升时间固定为1纳秒 (ns)
