@@ -147,8 +147,8 @@ def generate_saturation_output_filename(
         
 
 def generate_time_constant_output_filename(
-        ch0_attenuation_factor: str='20DB',
-        ch1_attenuation_factor: str='9DB', 
+        ch0_attenuation_factor: str='0DB',
+        ch1_attenuation_factor: str='0DB', 
         voltages: float=1.36,
         delta_time: int=100,
         trig: int=50,
