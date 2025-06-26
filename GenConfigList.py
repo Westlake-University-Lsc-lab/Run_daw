@@ -21,7 +21,7 @@ def generate_configure_list(env, py_file, led_configs=None, daw_configs=None):
                 led_config.get('synch_ch', 'CH1'),  # default CH1 for Synchronize Channel
                 str(led_config.get('combine_mode', 'False')),  # Convert to lower case string
                 str(led_config.get('Ch2_option', 'False')),  # Convert to lower case string for consistency
-                str(led_config.get('LongS2_option', 'False')),  # Convert to lower case string for consistency
+                # str(led_config.get('LongS2_option', 'False')),  # Convert to lower case string for consistency
             ]
             Conf_List.append(config_row)
                 
@@ -47,7 +47,7 @@ def generate_led_configs(
         synch_ch: str='CH1',
         combine_mode: str='True',
         Ch2_option: str='False',
-        LongS2_option: str='False',
+        # LongS2_option: str='False',
 ):
     """
     generator LED config list
@@ -70,7 +70,7 @@ def generate_led_configs(
             'synch_ch': synch_ch,
             'combine_mode': combine_mode,
             'Ch2_option':Ch2_option,
-            'LongS2_option':LongS2_option
+            # 'LongS2_option':LongS2_option
         }
         led_configs.append(config)
     print(led_configs)
