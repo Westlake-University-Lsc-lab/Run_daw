@@ -15,7 +15,6 @@ type the following command in terminal as the example:
 
 ```
 python configuration.py --freq 50 --amp 1.4 --delay 5 --sync CH1 --comb False --C2_ON False --LongS2 False
-
 Usagee: python configuration.py --freq 50 --amp 1.4 --delay 5 --sync CH1 --Comb False --C2_ON False --LongS2 False
 ```
 This script is just transmit the specific parameter to Pulse Generator, the syntax is in 'ConfigPulseGen.py'.
