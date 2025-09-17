@@ -36,16 +36,16 @@
 #OPEN USB 0 0
 #OPEN PCI 0 0 0x32110000
 OPEN PCI 0 0 0
+OPEN PCI 1 0 0
 
 # START ACQUISITION(SW,S_IN,FIRST_TRG,LVDS): board start acquisition signal source
 #start acquisition settings only apply when not in synchronization mode (see below)
-START_ACQ SW
+#START_ACQ SW
 #START_ACQ FIRST_TRG
 
 # ENABLE SYNC(YES/NO): sets all the registers required for the synchronization procedure
 # board delays might need a further tuning according to the experimental setup used
-SYNC_ENABLE NO
-
+SYNC_ENABLE YES
 
 # Statistics Refresh period (msec)(C), including event plotting if enabled.
 #STAT_REFRESH 1000
@@ -65,7 +65,6 @@ GNUPLOT_PATH /usr/bin/
 # Enable output file: RAW,WAVE (YES/NO)(C)
 # The RAW mode allows to save the board dump (.bin)
 # The WAVE mode allows to save the last wave of each active channel (.txt)
-
 OUTFILE_RAW YES
 #OUTFILE_WAVE NO
 
@@ -80,11 +79,8 @@ OUTFILE_RAW YES
 # if they are commented, "DAW_output" and "run0" will be the default output directory and name
 
 OUTFILE_PATH /mnt/data/PMT/R8520_406/
-
-#OUTFILE_NAME lv2415_lv2414_20241122_12DB_LED_1p35_1us_500hz_ref_run0
-#OUTFILE_NAME lv2415_lv2414_20241126_12DB_LED_combine_1p7v_850mv_1p36v_680mv_5us_50hz_run0
+#OUTFILE_PATH /mnt/data/TPC/
 OUTFILE_NAME lv2415_lv2414_20241203_test_self_trigger
-
 
 
 # SIZE OF A SINGLE OUTPUT BINARY FILE(in MBytes). After this size has been reached a new file will be open with a _(#+1) suffix.
@@ -120,22 +116,7 @@ FPIO_LEVEL  TTL
 # MINIMUM RECORD LENGTH (0/2097151)(CH): record length. Each unit is equal to 10 samples#
 RECORD_LENGTH 20
 #######################
-#RECORD_LENGTH 40      ## 1.6us  S2 only
-#RECORD_LENGTH 175    ##  5us S1+S2
-###################################################
-#RECORD_LENGTH 30 ## 1.2us 
-#RECORD_LENGTH 50  ## 2us
-#RECORD_LENGTH 100
-#RECORD_LENGTH 175    ###  5us
-#RECORD_LENGTH 300    ###  10us
-#RECORD_LENGTH 800    ###  30us
-#RECORD_LENGTH 2500   ### 90us
-#RECORD_LENGTH 5125   ### 200us
-#RECORD_LENGTH 7500   ### 300us
-#RECORD_LENGTH 12625   ### 500us
-#RECORD_LENGTH 25250   ### 1ms
-#RECORD_LENGTH 50500   ### 2ms
-#RECORD_LENGTH 126250   ### 5ms
+
 
 # MAXIMUM TAIL(0/2097151)(CH): maximum number of over-threshold samples collected after the minimum record length ends. Each unit corresponds to 4 samples
 MAX_TAIL 0
@@ -147,7 +128,7 @@ GAIN_FACTOR 0
 PRE_TRIGGER 5
 
 #LOOK-AHEAD WINDOW (0/511)(CH): samples collected after the over-threshold signal. Each unit corresponds to 4 samples
-N_LFW   20
+N_LFW   5
 
 #USE DEFAULT BASELINE VALUE (YES/NO)(CH): If set to YES, the baseline is given a fixed value (see below)
 BLINE_DEFMODE NO
@@ -174,6 +155,7 @@ TRG_THRESHOLD 20
 # ENABLE_INPUT: enable/disable the channel
 # options: YES, NO
 
+# Data Acquisition Time: if set to 0, the board will run continuously, otherwise it will stop after the specified time (in seconds)
 ACQ_TIME 300
 
 # DC_OFFSET: DC offset adjust (DAC channel setting) in percent of the Full Scale.
@@ -181,6 +163,10 @@ ACQ_TIME 300
 # +50: analog input dynamic range = 0 to +Vpp (positive signals)
 # 0:   analog input dynamic range = -Vpp/2 to +Vpp/2 (bipolar signals)
 # options: -50.0 to 50.0  (floating point)
+
+### Master board config
+[BOARD] 0
+START_ACQ SW
 
 [CHANNEL] 0
 ENABLE_INPUT           YES
@@ -192,57 +178,127 @@ DC_OFFSET              -40
 
 [CHANNEL] 2
 ENABLE_INPUT           YES
-DC_OFFSET              0
+DC_OFFSET              -40
 
 [CHANNEL] 3
-ENABLE_INPUT           NO
-DC_OFFSET              0
+ENABLE_INPUT           YES
+DC_OFFSET              -40
 
 [CHANNEL] 4
-ENABLE_INPUT           NO
-DC_OFFSET              0
+ENABLE_INPUT           YES
+DC_OFFSET              -40
 
 [CHANNEL] 5
-ENABLE_INPUT           NO
-DC_OFFSET              0
+ENABLE_INPUT           YES
+DC_OFFSET              -40
 
 [CHANNEL] 6
 ENABLE_INPUT           NO
-DC_OFFSET              0
+DC_OFFSET              -40
 
 [CHANNEL] 7
 ENABLE_INPUT           NO
-DC_OFFSET              0
+DC_OFFSET              -40
 
 [CHANNEL] 8
 ENABLE_INPUT           NO
-DC_OFFSET              0
+DC_OFFSET              -40
 
 [CHANNEL] 9
 ENABLE_INPUT           NO
-DC_OFFSET              0
+DC_OFFSET              -40
 
 [CHANNEL] 10
 ENABLE_INPUT           NO
-DC_OFFSET              0
+DC_OFFSET              -40
 
 [CHANNEL] 11
 ENABLE_INPUT           NO
-DC_OFFSET              0
+DC_OFFSET              -40
 
 [CHANNEL] 12
 ENABLE_INPUT           NO
-DC_OFFSET              0
+DC_OFFSET              -40
 
 [CHANNEL] 13
 ENABLE_INPUT           NO
-DC_OFFSET              0
+DC_OFFSET              -40
 
 [CHANNEL] 14
 ENABLE_INPUT           NO
-DC_OFFSET              0
+DC_OFFSET              -40
 
 [CHANNEL] 15
 ENABLE_INPUT           NO
-DC_OFFSET              0
+DC_OFFSET              -40
+
+
+### Slave board config
+[BOARD] 1
+START_ACQ LVDS
+
+[CHANNEL] 0
+ENABLE_INPUT           YES
+DC_OFFSET              -40
+
+[CHANNEL] 1
+ENABLE_INPUT           YES
+DC_OFFSET              -40
+
+[CHANNEL] 2
+ENABLE_INPUT           NO
+DC_OFFSET              -40
+
+[CHANNEL] 3
+ENABLE_INPUT           NO
+DC_OFFSET              -40
+
+[CHANNEL] 4
+ENABLE_INPUT           NO
+DC_OFFSET              -40
+
+[CHANNEL] 5
+ENABLE_INPUT           NO
+DC_OFFSET              -40
+
+[CHANNEL] 6
+ENABLE_INPUT           NO
+DC_OFFSET              -40
+
+[CHANNEL] 7
+ENABLE_INPUT           NO
+DC_OFFSET              -40
+
+[CHANNEL] 8
+ENABLE_INPUT           NO
+DC_OFFSET              -40
+
+[CHANNEL] 9
+ENABLE_INPUT           NO
+DC_OFFSET              -40
+
+[CHANNEL] 10
+ENABLE_INPUT           NO
+DC_OFFSET              -40
+
+[CHANNEL] 11
+ENABLE_INPUT           NO
+DC_OFFSET              -40
+
+[CHANNEL] 12
+ENABLE_INPUT           NO
+DC_OFFSET              -40
+
+[CHANNEL] 13
+ENABLE_INPUT           NO
+DC_OFFSET              -40
+
+[CHANNEL] 14
+ENABLE_INPUT           NO
+DC_OFFSET              -40
+
+[CHANNEL] 15
+ENABLE_INPUT           NO
+DC_OFFSET              -40
+
 
