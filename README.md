@@ -5,7 +5,7 @@ Run DAQ and config pulse generator by auto.
 #### to install the package, run the following command in terminal:
 
 ```
-git clone https://github.com/Westlake-University-Lsc-lab/Run_daw.git
+git clone git@github.com:Westlake-University-Lsc-lab/Run_daw.git
 git checkout your_branch_name
 ```
 
