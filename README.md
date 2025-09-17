@@ -40,10 +40,10 @@ This script is to generator config file before run DAW_Demo. The input file is '
 and output file is 'configure_new.txt'.  
 Parameter explaination:  
 'trig_style' --- str type, 'ext' or 'self',trigger mode 
-'rec_len'    --- int type, min record length of a raw waveform
-'acq_time'   --- int type, data acquirsition time length, unit by second  
-'threshold'  --- int type,self-trigger threshold, only efficient under 'self' trigger mode  
-'file_name'  --- str type, rawdata file tag  
+'rec_len'    --- int type, min record length of a raw waveform 
+'acq_time'   --- int type, data acquirsition time length, unit by second   
+'threshold'  --- int type,self-trigger threshold, only efficient under 'self' trigger mode   
+'file_name'  --- str type, rawdata file tag   
 
 
 #### Run DAQ
