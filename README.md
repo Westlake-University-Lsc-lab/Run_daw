@@ -1,6 +1,6 @@
 # Run_daw
 
-Run DAQ and config pulse generator by auto. 
+Run DAQ and config pulse generator by auto.
 
 #### to install the package, run the following command in terminal:
 
@@ -14,8 +14,9 @@ git checkout your_branch_name
 type the following command in terminal as the example:
 
 ```
-python configuration.py 50 1.8 5 CH2 True True
-Usage: python configuration.py  fre=50 amp=1.8 delay=5 sync=CH2 comb=True C2_ON=True
+python configuration.py --freq 50 --amp 1.4 --delay 5 --sync CH1 --comb False --C2_ON False --LongS2 False
+
+Usagee: python configuration.py --freq 50 --amp 1.4 --delay 5 --sync CH1 --Comb False --C2_ON False --LongS2 False
 ```
 
 #### Write DAW configure file
