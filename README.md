@@ -39,10 +39,8 @@ USAGE: python write_config.py trig_style[self] rec_len[int] acq_time[int] thresh
 This script is to generator config file before run DAW_Demo. The input file is 'DAW_Config.txt' by auto,  
 and output file is 'configure_new.txt'.  
 Parameter explaination:  
-'trig_style' --- str type, [ext, self],trigger mode, following with 'self' will run self-trigger mode,
-	     	 while following with 'ext' will be external-trigger  
-'rec_len'    --- int type, min record length of a raw waveform, suggest '5' for 'self' trigger,
-	     	 and '20' for 'ext' trigger, unit by 4 samples  
+'trig_style' --- str type, 'ext' or 'self',trigger mode 
+'rec_len'    --- int type, min record length of a raw waveform
 'acq_time'   --- int type, data acquirsition time length, unit by second  
 'threshold'  --- int type,self-trigger threshold, only efficient under 'self' trigger mode  
 'file_name'  --- str type, rawdata file tag  
