@@ -53,7 +53,9 @@ Parameter explaination:
 ```
 DAW_Demo  configure_new.txt
 ```
-This should be under 'daq' account and run daq
+This should be under 'daq' account and run daq.
+And you should press 's' on your keyboard to start data recording, press
+'q' to quit DAQ process, it will be stop after 'ACQ_TIME' seconds.
 
 
 #### Run DAQ and pulse generator by auto
