@@ -8,15 +8,28 @@ import time
 
 class WaveGenerator:
     def __init__(self, remote_ip: str, port: int):
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect((remote_ip, port))
+        try:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        except socket.error:
+            print('Failed to creat socket.')
+            sys.exit()
+        try:
+            self.sock.connect((remote_ip, port))
+        except socket.error:
+            print('Failed to connect to ip' + remote_ip)
+        #return self.sock
 
     def __del__(self):
         self.close()
 
     def query(self, cmd: str, bufsize: int = 4096):
         cmd = cmd + "\n"
-        self.sock.sendall(cmd.encode("latin1"))
+        try:
+            self.sock.sendall(cmd.encode("latin1"))
+            time.sleep(1)
+        except socket.error:
+            print('Send cmd faild')
+            sys.exit()
         reply = self.sock.recv(bufsize)
         return reply
 
