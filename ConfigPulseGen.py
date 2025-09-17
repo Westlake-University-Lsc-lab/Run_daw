@@ -13,9 +13,9 @@ def configure_waveform_generator(
     amp: float = 1.8,
     delay: int = 5,
     sync: str = "CH2",
-    comb=True,
-    C2_ON=False,
-    LongS2=False,
+    comb: bool =False,
+    C2_ON: bool = False,
+    LongS2: bool =False,
 ):
     afg = WaveGenerator(ip, port)
     if sync == "CH1":
@@ -30,7 +30,8 @@ def configure_waveform_generator(
         SYNC_CH = sync
         afg.send("C2:SYNC ON, TYPE,{}".format(SYNC_CH))
 
-    if C2_ON is True:
+
+    if C2_ON:
         amp_2 = 1.36
         ch2_on = "ON"
     elif C2_ON is False:
