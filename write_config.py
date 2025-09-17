@@ -1,3 +1,4 @@
+# encoding: utf-8
 import os
 import sys
 
@@ -42,6 +43,7 @@ def para_map_gen(trigger_style, rec_len, acq_time, threshold, filename):
     if trigger_style == 'ext':
         para_map = {
             'OUTFILE_PATH': '/mnt/data/PMT/R8520_406/',
+            #'OUTFILE_PATH': '/mnt/data/TPC/',
             'OUTFILE_NAME': 'lv2415_lv2414_20241126_12DB_LED_combine_1p7v_850mv_1p36v_680mv_5us_50hz_run0',
             'EXTERNAL_TRIGGER': 'ACQUISITION_ONLY',
             'SELF_TRIGGER': 'NO',
@@ -72,6 +74,7 @@ def para_map_gen(trigger_style, rec_len, acq_time, threshold, filename):
         #return para_map
     elif trigger_style == 'self':
         para_map = {
+            #'OUTFILE_PATH': '/mnt/data/TPC/',
             'OUTFILE_PATH': '/mnt/data/PMT/R8520_406/',
             'OUTFILE_NAME': 'lv2415_lv2414_20241118_darkrate_run0',
             'EXTERNAL_TRIGGER': 'DISABLE',
@@ -120,7 +123,7 @@ def replace_parameters_in_config(para_map, config_file):
         key_index = find_parameter_key_index(line, para_map)  # 查找行首至空格处是否存在键值并获取索引
         if key_index is not None:
             key, value = line.split(' ', 1)  
-            new_line = f"{key} {para_map[key]}\n"
+            new_line = str(key) + " " + str(para_map[key]) + "\n"
             new_lines.append(new_line)  # 将新生成的行加入到新文件中
             print(r'writing >>>> {}'.format(new_line))
             continue
