@@ -17,7 +17,6 @@ class WaveGenerator:
             self.sock.connect((remote_ip, port))
         except socket.error:
             print('Failed to connect to ip' + remote_ip)
-        #return self.sock
 
     def __del__(self):
         self.close()
