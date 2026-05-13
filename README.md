@@ -55,6 +55,41 @@ This should be under 'daq' account and run daq.
 And you should press 's' on your keyboard to start data recording, press
 'q' to quit DAQ process, it will be stop after 'ACQ_TIME' seconds.
 
+#### Continuous hourly DAQ in tmux
+
+Use `daq_hourly_tmux.sh` for repeated DAQ runs where each file is one hour
+long.  The script keeps `DAW_Demo configure_new.txt` running in a real tmux
+interactive shell and only sends keyboard input with `tmux send-keys`, which is
+closer to manual operation than controlling `DAW_Demo` through Python pipes.
+
+Start from the DAQ machine:
+
+```
+cd /home/daq/DAQ_DEMO
+./daq_hourly_tmux.sh start pmt7_3kVcm_200Vcm_b0_chs_thr_longtime 0
+```
+
+Or start remotely over SSH:
+
+```
+ssh daq@10.18.154.11 'cd /home/daq/DAQ_DEMO && ./daq_hourly_tmux.sh start pmt7_3kVcm_200Vcm_b0_chs_thr_longtime 0'
+```
+
+Useful commands:
+
+```
+./daq_hourly_tmux.sh status
+./daq_hourly_tmux.sh attach
+./daq_hourly_tmux.sh stop
+```
+
+By default each run uses `ACQ_TIME 3600` and writes filenames as
+`<base_name>run0`, `<base_name>run1`, etc.  To test with a shorter duration:
+
+```
+DAQ_ACQ_TIME=20 ./daq_hourly_tmux.sh start test_hourly 0
+```
+
 
 #### Run DAQ and pulse generator by auto
 

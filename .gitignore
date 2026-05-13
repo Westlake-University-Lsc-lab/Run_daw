@@ -23,6 +23,8 @@ node_modules
 ### some tmp files
 
 *~
+.daq_hourly_state/
+configure_new.txt.hourly_backup
 
 relics.mplstyle
 common_setup.py
