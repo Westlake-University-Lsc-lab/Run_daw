@@ -106,13 +106,17 @@ Start from the DAQ machine:
 
 ```
 cd /home/daq/DAQ_DEMO
-./daq_hourly_tmux.sh start pmt7_3kVcm_200Vcm_b0_chs_thr_longtime 0
+#####./daq_hourly_tmux.sh start pmt7_3kVcm_200Vcm_b0_chs_thr_longtime 0
+
+WRITECONFIG_TRIGGER=ext  DAQ_ACQ_TIME=600 DAQ_GAP_SECONDS=5  RUNINFO_COMMENT='["LED Calibration"]' ./daq_hourly_tmux.sh start
 ```
 
-Or start remotely over SSH:
+You need give some input parametes, like `WRITECONFIG_TRIGGER`, `DAQ_ACQ_TIME`,`RUNINFO_COMMENT`, the `WRITECONFIG_TRIGGER=self` by default, if you want to take LED external data, you shold give it `ext`trigger mode. `DAQ_ACQ_TIME` is data take time length for a run, after a run it will start a new run automatically. `RUNINFO_COMMENT` will store the feature about this run, like `LED Calibration, Kr Calibration, Xe Overnight Run` or something can explain the data.
+Start remotely over SSH:
 
 ```
 ssh daq@10.18.154.11 'cd /home/daq/DAQ_DEMO && ./daq_hourly_tmux.sh start pmt7_3kVcm_200Vcm_b0_chs_thr_longtime 0'
+## not recommended
 ```
 
 Useful commands:
