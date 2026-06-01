@@ -43,12 +43,14 @@ python writeconfig.py <runtype> <trigger_style> <acq_time> <thresholds.json>
 
 This script is to generator config file before run DAW_Demo. The input file is 'DAW_Config.txt' by auto,  
 and output file is 'configure_new.txt'.  
-Parameter explaination:  
+Parameter explaination:
+
+```
 'trig_style' --- str type, 'ext' or 'self',trigger mode
-'rec_len' --- int type, min record length of a raw waveform. self --> rec_len = 5, ext --> rec_len = 25.
-'acq_time' --- int type, data acquirsition time length, unit by second  
-'threshold.json' --- int type,self-trigger threshold.json file, only efficient under 'self' trigger mode  
-~'file_name' --- str type, rawdata file tag ~
+'rec_len' --- int type, min record length of a raw waveform. self --> rec_len = 5, ext --> rec_len = 25
+'acq_time' --- int type, data acquirsition time length, unit by second
+'threshold.json' --- int type,self-trigger threshold.json file, only efficient under 'self' trigger mode
+```
 
 The data will be stored in:
 
