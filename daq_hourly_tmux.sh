@@ -1,14 +1,36 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORKDIR="${DAQ_WORKDIR:-${SCRIPT_DIR}}"
+WORKDIR="${DAQ_WORKDIR:-/home/daq/DAQ_DEMO}"
 SESSION="${DAQ_SESSION:-daq_hourly}"
 STATE_DIR="${WORKDIR}/.daq_hourly_state"
 LOG_FILE="${STATE_DIR}/controller.log"
-CONFIG_FILE="${DAQ_CONFIG_FILE:-configure_new.txt}"
+WRITECONFIG_LOG_FILE="${STATE_DIR}/writeconfig.log"
+RUNCONFIGINFO_LOG_FILE="${STATE_DIR}/runconfiginfo.log"
+
 DAW_PROGRAM="${DAQ_PROGRAM:-DAW_Demo}"
-DEFAULT_BASE="pmt7_3kVcm_200Vcm_b0_chs_thr_longtime"
+CONFIG_FILE="${DAQ_CONFIG_FILE:-configure_new.txt}"
+
+# dataflux monitor
+DATAFLUX_ENABLE="${DATAFLUX_ENABLE:-1}"      # 1=启用, 0=关闭
+DATAFLUX_CMD="${DATAFLUX_CMD:-python3 dataflux.py}"
+DATAFLUX_PID_FILE="${STATE_DIR}/dataflux.pid"
+DATAFLUX_LOG_FILE="${STATE_DIR}/dataflux.log"
+
+# writeconfig.py 参数（除采集时长外其余固定）
+WRITECONFIG_RUNTYPE="${WRITECONFIG_RUNTYPE:-run6_Xe}"
+WRITECONFIG_TRIGGER="${WRITECONFIG_TRIGGER:-self}"
+WRITECONFIG_THRESHOLDS="${WRITECONFIG_THRESHOLDS:-./thresholds.json}"
+
+# 采集时长（秒）-> writeconfig.py 第三个参数
+DAQ_ACQ_TIME="${DAQ_ACQ_TIME:-60}"
+
+# runconfiginfo.py 参数
+RUNINFO_OPERATOR="${RUNINFO_OPERATOR:-JJ Yang}"
+RUNINFO_DEC_PARAMS="${RUNINFO_DEC_PARAMS:-dec_params.json}"
+RUNINFO_THRESHOLD="${RUNINFO_THRESHOLD:-thresholds.json}"
+RUNINFO_MAPPING="${RUNINFO_MAPPING:-mapping.json}"
+RUNINFO_COMMENT="${RUNINFO_COMMENT:-[\"tuning trigger threshold\"]}"
 
 mkdir -p "${STATE_DIR}"
 
@@ -20,81 +42,31 @@ log() {
 usage() {
   cat <<USAGE
 USAGE:
-  ./daq_hourly_tmux.sh start [base_name] [start_run]
+  ./daq_hourly_tmux.sh start
   ./daq_hourly_tmux.sh stop
   ./daq_hourly_tmux.sh status
   ./daq_hourly_tmux.sh attach
   ./daq_hourly_tmux.sh controller
 
 ENV:
-  DAQ_WORKDIR       DAQ working directory, default: this script directory
-  DAQ_SESSION       tmux session name, default: daq_hourly
-  DAQ_ACQ_TIME      seconds per file, default: 3600
-  DAQ_GAP_SECONDS   seconds between runs, default: 5
-  DAQ_PROGRAM       DAQ command, default: DAW_Demo
+  DAQ_WORKDIR        working directory, default: /home/daq/DAQ_DEMO
+  DAQ_SESSION        tmux session name, default: daq_hourly
+  DAQ_ACQ_TIME       acquisition time (seconds) for writeconfig.py, default: 300
+  DAQ_GAP_SECONDS    seconds between runs, default: 5
+  DAQ_GRACE_SECONDS  extra timeout after acq_time, default: 180
+  DAQ_PROGRAM        DAQ command, default: DAW_Demo
+  DAQ_CONFIG_FILE    config for DAW_Demo, default: configure_nw.txt
+
+  WRITECONFIG_RUNTYPE     default: run6_Xe
+  WRITECONFIG_TRIGGER     default: self
+  WRITECONFIG_THRESHOLDS  default: ./thresholds.json
+
+  RUNINFO_OPERATOR   default: JJ Yang
+  RUNINFO_DEC_PARAMS default: dec_params.json
+  RUNINFO_THRESHOLD  default: thresholds.json
+  RUNINFO_MAPPING    default: mapping.json
+  RUNINFO_COMMENT    JSON-like string list, default: ["tuning trigger threshold"]
 USAGE
-}
-
-update_config() {
-  local outfile="$1"
-  local acq_time="$2"
-
-  cd "${WORKDIR}"
-  python - "${CONFIG_FILE}" "${outfile}" "${acq_time}" <<'PY'
-from __future__ import print_function
-import os
-import shutil
-import sys
-import tempfile
-
-config_path, outfile, acq_time = sys.argv[1], sys.argv[2], sys.argv[3]
-backup_path = config_path + ".hourly_backup"
-
-if not os.path.exists(config_path):
-    raise SystemExit("missing config file: {}".format(config_path))
-
-if not os.path.exists(backup_path):
-    shutil.copy2(config_path, backup_path)
-
-with open(config_path, "r") as f:
-    lines = f.readlines()
-
-changed_name = False
-changed_time = False
-new_lines = []
-
-for line in lines:
-    stripped = line.strip()
-    if stripped and not stripped.startswith("#"):
-        key = stripped.split(None, 1)[0]
-        leading = line[:len(line) - len(line.lstrip())]
-        if key == "OUTFILE_NAME":
-            new_lines.append("{}OUTFILE_NAME {}\n".format(leading, outfile))
-            changed_name = True
-            continue
-        if key == "ACQ_TIME":
-            new_lines.append("{}ACQ_TIME {}\n".format(leading, acq_time))
-            changed_time = True
-            continue
-    new_lines.append(line)
-
-if not changed_name:
-    raise SystemExit("OUTFILE_NAME not found in {}".format(config_path))
-if not changed_time:
-    raise SystemExit("ACQ_TIME not found in {}".format(config_path))
-
-fd, tmp_path = tempfile.mkstemp(prefix=".configure_hourly.", suffix=".tmp", dir=".")
-try:
-    with os.fdopen(fd, "w") as f:
-        f.writelines(new_lines)
-    shutil.move(tmp_path, config_path)
-finally:
-    if os.path.exists(tmp_path):
-        os.remove(tmp_path)
-
-print("OUTFILE_NAME {}".format(outfile))
-print("ACQ_TIME {}".format(acq_time))
-PY
 }
 
 pane_pid() {
@@ -121,38 +93,100 @@ wait_for_daw_start() {
   return 1
 }
 
+start_dataflux() {
+  [ "${DATAFLUX_ENABLE}" = "1" ] || return 0
+
+  # 清理旧pid
+  if [ -f "${DATAFLUX_PID_FILE}" ]; then
+    local oldpid
+    oldpid="$(cat "${DATAFLUX_PID_FILE}" 2>/dev/null || true)"
+    if [ -n "${oldpid}" ] && kill -0 "${oldpid}" 2>/dev/null; then
+      log "dataflux already running: pid=${oldpid}"
+      return 0
+    fi
+    rm -f "${DATAFLUX_PID_FILE}"
+  fi
+
+  # 后台启动
+  (
+    #nohup bash -lc "cd '${WORKDIR}'; exec ${DATAFLUX_CMD}" >> "${DATAFLUX_LOG_FILE}" 2>&1 &
+    nohup ${DATAFLUX_CMD} >> "${DATAFLUX_LOG_FILE}" 2>&1 &
+    echo $! > "${DATAFLUX_PID_FILE}"
+  )
+  sleep 0.5
+
+  local pid=""
+  pid="$(cat "${DATAFLUX_PID_FILE}" 2>/dev/null || true)"
+  if [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
+    # 注意：不打印 cmd，避免出现启动参数
+    log "dataflux started: pid=${pid}"
+  else
+    log "WARNING: failed to start dataflux"
+    rm -f "${DATAFLUX_PID_FILE}"
+  fi
+}
+
+stop_dataflux() {
+  [ "${DATAFLUX_ENABLE}" = "1" ] || return 0
+
+  [ -f "${DATAFLUX_PID_FILE}" ] || return 0
+
+  local pid=""
+  pid="$(cat "${DATAFLUX_PID_FILE}" 2>/dev/null || true)"
+  if [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
+    log "stopping dataflux pid=${pid}"
+    kill "${pid}" 2>/dev/null || true
+    sleep 1
+    if kill -0 "${pid}" 2>/dev/null; then
+      kill -9 "${pid}" 2>/dev/null || true
+    fi
+  fi
+  rm -f "${DATAFLUX_PID_FILE}"
+}
+
+
 controller() {
   cd "${WORKDIR}"
 
-  local base_name="${DAQ_BASE_NAME:-${DEFAULT_BASE}}"
-  local run_idx="${DAQ_START_RUN:-0}"
-  local acq_time="${DAQ_ACQ_TIME:-3600}"
+  local acq_time="${DAQ_ACQ_TIME:-300}"
   local gap_seconds="${DAQ_GAP_SECONDS:-5}"
   local grace_seconds="${DAQ_GRACE_SECONDS:-180}"
   local stop_file="${STATE_DIR}/stop"
 
   rm -f "${stop_file}"
-  log "controller started: session=${SESSION}, worker=${DAQ_WORKER_PANE}, base=${base_name}, start_run=${run_idx}, acq_time=${acq_time}"
+  log "controller started: session=${SESSION}, worker=${DAQ_WORKER_PANE}, acq_time=${acq_time}"
 
   while [ ! -f "${stop_file}" ]; do
-    local outfile="${base_name}run${run_idx}"
-    log "preparing run ${run_idx}: ${outfile}"
-    update_config "${outfile}" "${acq_time}" >> "${LOG_FILE}" 2>&1
-
     tmux send-keys -t "${DAQ_WORKER_PANE}" "cd ${WORKDIR}" Enter
+
+    log "step1: python3 writeconfig.py ${WRITECONFIG_RUNTYPE} ${WRITECONFIG_TRIGGER} ${acq_time} ${WRITECONFIG_THRESHOLDS}"
+    tmux send-keys -t "${DAQ_WORKER_PANE}" \
+      "cd ${WORKDIR} && python3 writeconfig.py ${WRITECONFIG_RUNTYPE} ${WRITECONFIG_TRIGGER} ${acq_time} ${WRITECONFIG_THRESHOLDS} >> '${WRITECONFIG_LOG_FILE}' 2>&1" Enter
+
+    sleep 5
+
+    log "step2: python3 runconfiginfo.py --operator \"${RUNINFO_OPERATOR}\" --dec_params ${RUNINFO_DEC_PARAMS} --threshold ${RUNINFO_THRESHOLD} --mapping ${RUNINFO_MAPPING} --run_comment '${RUNINFO_COMMENT}'"
+    tmux send-keys -t "${DAQ_WORKER_PANE}" \
+      "cd ${WORKDIR} && python3 runconfiginfo.py --operator \"${RUNINFO_OPERATOR}\" --dec_params ${RUNINFO_DEC_PARAMS} --threshold ${RUNINFO_THRESHOLD} --mapping ${RUNINFO_MAPPING} --run_comment '${RUNINFO_COMMENT}' >> '${RUNCONFIGINFO_LOG_FILE}' 2>&1" Enter
+
+    # 再停顿 5 秒，确保第二步执行后再启动 DAW
+    sleep 5
+
+    log "step3: ${DAW_PROGRAM} ${CONFIG_FILE}"
     tmux send-keys -t "${DAQ_WORKER_PANE}" "${DAW_PROGRAM} ${CONFIG_FILE}" Enter
     sleep 2
     tmux send-keys -t "${DAQ_WORKER_PANE}" s
 
     local pid=""
     if ! pid="$(wait_for_daw_start 20)"; then
-      log "ERROR: DAW_Demo did not start for run ${run_idx}"
-      run_idx=$((run_idx + 1))
+      log "ERROR: DAW_Demo did not start"
       sleep "${gap_seconds}"
       continue
     fi
 
-    log "run ${run_idx} started: pid=${pid}"
+    log "run started: pid=${pid}"
+
+    start_dataflux
 
     local deadline=$(( $(date +%s) + acq_time + grace_seconds ))
     while kill -0 "${pid}" 2>/dev/null; do
@@ -162,7 +196,7 @@ controller() {
         break
       fi
       if [ "$(date +%s)" -gt "${deadline}" ]; then
-        log "run ${run_idx} exceeded ${acq_time}+${grace_seconds}s; sending q"
+        log "run exceeded ${acq_time}+${grace_seconds}s; sending q"
         tmux send-keys -t "${DAQ_WORKER_PANE}" q
         break
       fi
@@ -173,8 +207,9 @@ controller() {
       sleep 1
     done
 
-    log "run ${run_idx} finished"
-    run_idx=$((run_idx + 1))
+    stop_dataflux
+
+    log "run finished"
 
     if [ -f "${stop_file}" ]; then
       break
@@ -186,9 +221,6 @@ controller() {
 }
 
 start() {
-  local base_name="${1:-${DEFAULT_BASE}}"
-  local start_run="${2:-0}"
-
   cd "${WORKDIR}"
 
   if tmux has-session -t "${SESSION}" 2>/dev/null; then
@@ -199,6 +231,9 @@ start() {
 
   rm -f "${STATE_DIR}/stop"
   : > "${LOG_FILE}"
+  : > "${WRITECONFIG_LOG_FILE}"
+  : > "${RUNCONFIGINFO_LOG_FILE}"
+
 
   local worker_pane
   worker_pane="$(tmux new-session -d -s "${SESSION}" -n run -P -F '#{pane_id}' "cd ${WORKDIR}; exec bash -i")"
@@ -206,11 +241,26 @@ start() {
   tmux set-environment -t "${SESSION}" DAQ_WORKDIR "${WORKDIR}"
   tmux set-environment -t "${SESSION}" DAQ_SESSION "${SESSION}"
   tmux set-environment -t "${SESSION}" DAQ_WORKER_PANE "${worker_pane}"
-  tmux set-environment -t "${SESSION}" DAQ_BASE_NAME "${base_name}"
-  tmux set-environment -t "${SESSION}" DAQ_START_RUN "${start_run}"
-  tmux set-environment -t "${SESSION}" DAQ_ACQ_TIME "${DAQ_ACQ_TIME:-3600}"
+  tmux set-environment -t "${SESSION}" DAQ_ACQ_TIME "${DAQ_ACQ_TIME:-300}"
   tmux set-environment -t "${SESSION}" DAQ_GAP_SECONDS "${DAQ_GAP_SECONDS:-5}"
+  tmux set-environment -t "${SESSION}" DAQ_GRACE_SECONDS "${DAQ_GRACE_SECONDS:-180}"
   tmux set-environment -t "${SESSION}" DAQ_PROGRAM "${DAW_PROGRAM}"
+  tmux set-environment -t "${SESSION}" DAQ_CONFIG_FILE "${CONFIG_FILE}"
+
+  tmux set-environment -t "${SESSION}" WRITECONFIG_RUNTYPE "${WRITECONFIG_RUNTYPE}"
+  tmux set-environment -t "${SESSION}" WRITECONFIG_TRIGGER "${WRITECONFIG_TRIGGER}"
+  tmux set-environment -t "${SESSION}" WRITECONFIG_THRESHOLDS "${WRITECONFIG_THRESHOLDS}"
+
+  tmux set-environment -t "${SESSION}" RUNINFO_OPERATOR "${RUNINFO_OPERATOR}"
+  tmux set-environment -t "${SESSION}" RUNINFO_DEC_PARAMS "${RUNINFO_DEC_PARAMS}"
+  tmux set-environment -t "${SESSION}" RUNINFO_THRESHOLD "${RUNINFO_THRESHOLD}"
+  tmux set-environment -t "${SESSION}" RUNINFO_MAPPING "${RUNINFO_MAPPING}"
+  tmux set-environment -t "${SESSION}" RUNINFO_COMMENT "${RUNINFO_COMMENT}"
+
+  tmux set-environment -t "${SESSION}" DATAFLUX_ENABLE "${DATAFLUX_ENABLE}"
+  tmux set-environment -t "${SESSION}" DATAFLUX_CMD "${DATAFLUX_CMD}"
+  tmux set-environment -t "${SESSION}" DATAFLUX_PID_FILE "${DATAFLUX_PID_FILE}"
+  tmux set-environment -t "${SESSION}" DATAFLUX_LOG_FILE "${DATAFLUX_LOG_FILE}"
 
   tmux new-window -d -t "${SESSION}" -n control "cd ${WORKDIR}; exec bash ./daq_hourly_tmux.sh controller"
 
@@ -228,8 +278,15 @@ stop() {
     if [ -n "${worker}" ]; then
       tmux send-keys -t "${worker}" q 2>/dev/null || true
     fi
-    echo "Stop requested for '${SESSION}'."
+
+    # 停dataflux
+    stop_dataflux || true
+
+    sleep 1
+    tmux kill-session -t "${SESSION}" 2>/dev/null || true
+    echo "Stopped and closed tmux session '${SESSION}'."
   else
+    stop_dataflux || true
     echo "tmux session '${SESSION}' is not running."
   fi
 }
@@ -239,6 +296,12 @@ status() {
     echo "tmux session '${SESSION}' is running."
     echo "--- controller log ---"
     tail -n 30 "${LOG_FILE}" 2>/dev/null || true
+
+    echo "--- writeconfig log ---"
+    tail -n 30 "${WRITECONFIG_LOG_FILE}" 2>/dev/null || true
+    echo "--- runconfiginfo log ---"
+    tail -n 30 "${RUNCONFIGINFO_LOG_FILE}" 2>/dev/null || true
+
     echo "--- DAQ pane ---"
     local worker
     worker="$(tmux show-environment -t "${SESSION}" DAQ_WORKER_PANE 2>/dev/null | sed 's/^DAQ_WORKER_PANE=//')"
@@ -253,8 +316,7 @@ status() {
 
 case "${1:-}" in
   start)
-    shift
-    start "$@"
+    start
     ;;
   stop)
     stop
