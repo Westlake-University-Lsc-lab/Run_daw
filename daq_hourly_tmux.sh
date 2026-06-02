@@ -31,6 +31,7 @@ RUNINFO_DEC_PARAMS="${RUNINFO_DEC_PARAMS:-dec_params.json}"
 RUNINFO_THRESHOLD="${RUNINFO_THRESHOLD:-thresholds.json}"
 RUNINFO_MAPPING="${RUNINFO_MAPPING:-mapping.json}"
 RUNINFO_COMMENT="${RUNINFO_COMMENT:-[\"tuning trigger threshold\"]}"
+RUNINFO_RUN_TAG="${RUNINFO_RUN_TAG:-TPC_Xe Run}"
 
 mkdir -p "${STATE_DIR}"
 
@@ -165,9 +166,9 @@ controller() {
 
     sleep 5
 
-    log "step2: python3 runconfiginfo.py --operator \"${RUNINFO_OPERATOR}\" --dec_params ${RUNINFO_DEC_PARAMS} --threshold ${RUNINFO_THRESHOLD} --mapping ${RUNINFO_MAPPING} --run_comment '${RUNINFO_COMMENT}'"
+    log "step2: python3 runconfiginfo.py --operator \"${RUNINFO_OPERATOR}\" --dec_params ${RUNINFO_DEC_PARAMS} --threshold ${RUNINFO_THRESHOLD} --mapping ${RUNINFO_MAPPING} --run_comment '${RUNINFO_COMMENT}' --run_tag \"${RUNINFO_RUN_TAG}\" "
     tmux send-keys -t "${DAQ_WORKER_PANE}" \
-      "cd ${WORKDIR} && python3 runconfiginfo.py --operator \"${RUNINFO_OPERATOR}\" --dec_params ${RUNINFO_DEC_PARAMS} --threshold ${RUNINFO_THRESHOLD} --mapping ${RUNINFO_MAPPING} --run_comment '${RUNINFO_COMMENT}' >> '${RUNCONFIGINFO_LOG_FILE}' 2>&1" Enter
+      "cd ${WORKDIR} && python3 runconfiginfo.py --operator \"${RUNINFO_OPERATOR}\" --dec_params ${RUNINFO_DEC_PARAMS} --threshold ${RUNINFO_THRESHOLD} --mapping ${RUNINFO_MAPPING} --run_comment '${RUNINFO_COMMENT}' --run_tag \"${RUNINFO_RUN_TAG}\" >> '${RUNCONFIGINFO_LOG_FILE}' 2>&1" Enter
 
     # 再停顿 5 秒，确保第二步执行后再启动 DAW
     sleep 5
@@ -256,6 +257,7 @@ start() {
   tmux set-environment -t "${SESSION}" RUNINFO_THRESHOLD "${RUNINFO_THRESHOLD}"
   tmux set-environment -t "${SESSION}" RUNINFO_MAPPING "${RUNINFO_MAPPING}"
   tmux set-environment -t "${SESSION}" RUNINFO_COMMENT "${RUNINFO_COMMENT}"
+  tmux set-environment -t "${SESSION}" RUNINFO_RUN_TAG "${RUNINFO_RUN_TAG}"
 
   tmux set-environment -t "${SESSION}" DATAFLUX_ENABLE "${DATAFLUX_ENABLE}"
   tmux set-environment -t "${SESSION}" DATAFLUX_CMD "${DATAFLUX_CMD}"
