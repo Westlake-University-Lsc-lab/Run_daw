@@ -5,6 +5,7 @@ import argparse
 import json
 import re
 import shutil
+from datetime import datetime
 from pathlib import Path
 
 
@@ -33,7 +34,6 @@ def find_latest_run(tpc_root=TPC_ROOT):
     for runtype_dir in tpc_root.iterdir():
         if not runtype_dir.is_dir():
             continue
-
         for run_dir in runtype_dir.iterdir():
             if not run_dir.is_dir():
                 continue
@@ -90,10 +90,8 @@ def read_config_fields(config_file):
     with config_file.open("r", encoding="utf-8") as f:
         for raw_line in f:
             line = raw_line.strip()
-
             if not line or line.startswith("###"):
                 continue
-
             for key in values.keys():
                 if line.startswith(key):
                     parts = line.split(None, 1)
@@ -109,12 +107,11 @@ def read_config_fields(config_file):
     return values
 
 
-def parse_trigger_style(self_trigger, external_trigger):
+def parse_trigger_mode(self_trigger, external_trigger):
     """
     Rules:
-      SELF_TRIGGER YES and EXTERNAL_TRIGGER DISABLED -> self
-      SELF_TRIGGER NO  and EXTERNAL_TRIGGER ACQUISITION_ONLY -> ext
-    Any other combination -> error.
+      SELF_TRIGGER YES and EXTERNAL_TRIGGER DISABLED          -> self
+      SELF_TRIGGER NO  and EXTERNAL_TRIGGER ACQUISITION_ONLY  -> ext
     """
     self_trigger = self_trigger.upper()
     external_trigger = external_trigger.upper()
@@ -128,6 +125,43 @@ def parse_trigger_style(self_trigger, external_trigger):
         f"Unsupported trigger combination: SELF_TRIGGER={self_trigger}, "
         f"EXTERNAL_TRIGGER={external_trigger}"
     )
+
+
+def parse_start_time(outfile_name, runtype, run_id):
+    """
+    Extract start_time from outfile_name.
+    Format: {runtype}_{datetime}_{run_id}
+    e.g.  run6_Xe_20260601_135905_00099
+          -> datetime part: 20260601_135905
+          -> ISO: 2026-06-01T13:59:05
+
+    Strategy: strip known prefix '{runtype}_' and suffix '_{run_id}',
+    remainder is the datetime string. This is safe for runtypes that
+    contain underscores (e.g. run6_Ar_Xe).
+    """
+    prefix = f"{runtype}_"
+    suffix = f"_{run_id}"
+
+    if not outfile_name.startswith(prefix):
+        raise ValueError(
+            f"outfile_name '{outfile_name}' does not start with expected prefix '{prefix}'"
+        )
+    if not outfile_name.endswith(suffix):
+        raise ValueError(
+            f"outfile_name '{outfile_name}' does not end with expected suffix '{suffix}'"
+        )
+
+    dt_str = outfile_name[len(prefix): -len(suffix)]  # e.g. "20260601_135905"
+
+    try:
+        dt = datetime.strptime(dt_str, "%Y%m%d_%H%M%S")
+    except ValueError:
+        raise ValueError(
+            f"Cannot parse datetime from '{dt_str}' in outfile_name '{outfile_name}'. "
+            f"Expected format: YYYYMMDD_HHMMSS"
+        )
+
+    return dt.isoformat()  # e.g. "2026-06-01T13:59:05"
 
 
 def infer_dec_info(runtype):
@@ -149,19 +183,11 @@ def infer_dec_info(runtype):
     raise ValueError(f"Cannot infer dec_info from runtype: {runtype}")
 
 
-
 def expand_threshold_patches(threshold_data):
     """
     Expand board-level threshold.json to per-channel threshold_patches.
-    Expected board-level format:
-      [
-        {
-          "board_id": 0,
-          "channel_id": [9, 10, 11],
-          "trg_threshold": [100, 110, 120]
-        },
-        ...
-      ]
+    Expected format:
+      [{"board_id": 0, "channel_id": [9,10], "trg_threshold": [100,110]}, ...]
     """
     threshold_patches = []
 
@@ -183,41 +209,56 @@ def expand_threshold_patches(threshold_data):
             threshold_patches.append({
                 "board_id": board_id,
                 "channel_id": ch,
-                "trg_threshold": thr
+                "trg_threshold": thr,
             })
 
     return threshold_patches
 
 
-def build_runinfo(runtype, run_id, operator, trigger_style, acq_time, rec_len,
-                  outfile_path, outfile_name, daq_config_source,
-                  threshold_patches, mapping, dec_info, dec_params, run_comment):
+def build_runinfo(runtype, run_id, operator, trigger_mode, acq_time, rec_len,
+                  outfile_path, outfile_name, start_time,
+                  daq_config_source, threshold_patches,
+                  mapping, dec_info, dec_params, run_tag, run_comment):
+    """
+    Build runinfo dict with section order:
+      run_info -> dec_info -> run_option -> mapping -> daq_config
+    """
+    # dec_info with dec_params nested inside
+    dec_info_full = {
+        **dec_info,
+        "dec_params": dec_params,
+    }
+
     return {
         "run_info": {
             "runtype": runtype,
             "run_id": run_id,
             "operator": operator,
-            "trigger_style": trigger_style,
+            "trigger_mode": trigger_mode,
             "acq_time": acq_time,
             "rec_len": rec_len,
             "outfile_path": outfile_path,
             "outfile_name": outfile_name,
+            "start_time": start_time,
+            "daq_adapter": "V1725",
+            "sampling_rate_hz": 250000000,
         },
+        "dec_info": dec_info_full,
+        "run_option": {
+            "run_tag": run_tag,
+            "run_comment": run_comment,
+        },
+        "mapping": mapping,
         "daq_config": {
             "source_file": str(daq_config_source),
             "note": "Copied from configure_new.txt to config.cfg during runconfiginfo.py",
+            "trigger_logic": {
+                "self_trigger": trigger_mode == "self",
+                "external_trigger": trigger_mode == "ext",
+                "external_mode": "ACQUISITION_ONLY" if trigger_mode == "ext" else "DISABLED",
+            },
+            "threshold_patches": threshold_patches,
         },
-        "trigger_logic": {
-            "self_trigger": trigger_style == "self",
-            "external_trigger": trigger_style == "ext",
-            "external_mode": "ACQUISITION_ONLY" if trigger_style == "ext" else "DISABLED",
-        },
-        "threshold_patches": threshold_patches,
-        "mapping": mapping,
-        "dec_info": dec_info,
-        "dec_params": dec_params,
-        "run_comment": run_comment or [],
-        "plugins": {},
     }
 
 
@@ -231,39 +272,29 @@ def write_runinfo_json(runinfo, output_file):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Generate runinfo.json from fixed configure_new.txt and JSON input files."
+        description="Generate runinfo.json from configure_new.txt and JSON input files.",
+        epilog=(
+            'Example:\n'
+            '  python runconfiginfo.py \\\n'
+            '    --operator "JJ Yang" \\\n'
+            '    --run_tag "TPC_Xe Run" \\\n'
+            '    --dec_params dec_params.json \\\n'
+            '    --threshold thresholds.json \\\n'
+            '    --mapping mapping.json \\\n'
+            '    --run_comment \'["0 Field", "1kHz trigger rate"]\''
+        ),
     )
 
-    parser.add_argument(
-        "--operator",
-        required=True,
-        help='Operator name, e.g. "JJ Yang"',
-    )
-    parser.add_argument(
-        "--dec_params",
-        required=True,
-        help="Path to dec_params.json",
-    )
-    parser.add_argument(
-        "--threshold",
-        required=True,
-        help="Path to threshold.json",
-    )
-    parser.add_argument(
-        "--mapping",
-        required=True,
-        help="Path to mapping.json",
-    )
+    parser.add_argument("--operator", required=True, help='Operator name, e.g. "JJ Yang"')
+    parser.add_argument("--run_tag",  required=True, help='Run tag, e.g. "TPC_Xe Run"')
+    parser.add_argument("--dec_params", required=True, help="Path to dec_params.json")
+    parser.add_argument("--threshold",  required=True, help="Path to thresholds.json")
+    parser.add_argument("--mapping",    required=True, help="Path to mapping.json")
     parser.add_argument(
         "--run_comment",
         default="[]",
-        help='Run comments in JSON array string, e.g. \'["test runinfo"]\'',
+        help='Run comments as JSON array string, e.g. \'["0 Field", "1kHz trigger rate"]\'',
     )
-
-    parser.epilog = """
-    Example:
-        python runconfiginfo.py --operator "JJ Yang" --dec_params dec_params.json --threshold threshold.json --mapping mapping.json --run_comment '["test runinfo"]'
-    """
 
     args = parser.parse_args()
 
@@ -275,9 +306,12 @@ def main():
 
     # Step 3: parse config.cfg
     cfg = read_config_fields(config_file)
-    trigger_style = parse_trigger_style(cfg["SELF_TRIGGER"], cfg["EXTERNAL_TRIGGER"])
+    trigger_mode = parse_trigger_mode(cfg["SELF_TRIGGER"], cfg["EXTERNAL_TRIGGER"])
 
-    # Step 4: load external JSON files
+    # Step 4: parse start_time from outfile_name
+    start_time = parse_start_time(cfg["OUTFILE_NAME"], runtype, run_id)
+
+    # Step 5: load external JSON files
     dec_params = load_json_file(args.dec_params)
     threshold_data = load_json_file(args.threshold)
     mapping = load_json_file(args.mapping)
@@ -289,31 +323,33 @@ def main():
     except Exception as e:
         raise ValueError(f"Invalid --run_comment format: {e}")
 
-    # Step 5: infer dec_info from runtype
+    # Step 6: infer dec_info from runtype
     dec_info = infer_dec_info(runtype)
 
-    # Step 6: expand threshold patches
+    # Step 7: expand threshold patches
     threshold_patches = expand_threshold_patches(threshold_data)
 
-    # Step 7: build runinfo
+    # Step 8: build runinfo
     runinfo = build_runinfo(
         runtype=runtype,
         run_id=run_id,
         operator=args.operator,
-        trigger_style=trigger_style,
+        trigger_mode=trigger_mode,
         acq_time=float(cfg["ACQ_TIME"]),
         rec_len=int(cfg["RECORD_LENGTH"]),
         outfile_path=cfg["OUTFILE_PATH"],
         outfile_name=cfg["OUTFILE_NAME"],
+        start_time=start_time,
         daq_config_source=config_file,
         threshold_patches=threshold_patches,
         mapping=mapping,
         dec_info=dec_info,
         dec_params=dec_params,
+        run_tag=args.run_tag,
         run_comment=run_comment,
     )
 
-    # Step 8: fixed output path
+    # Step 9: write to run directory
     output_file = run_dir / "runinfo.json"
     write_runinfo_json(runinfo, output_file)
     print(f"runinfo.json generated successfully: {output_file}")
