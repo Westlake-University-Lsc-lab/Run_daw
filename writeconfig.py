@@ -11,17 +11,17 @@ from datetime import datetime
 DEFAULT_TEMPLATE = "DAW_Config.txt"
 OUTPUT_CONFIG = "configure_new.txt"
 DEFAULT_RUNTYPE = "run5_Ar"
-DEFAULT_TRIGGER_STYLE = "self"
+DEFAULT_TRIGGER_MODE = "self"
 BASE_PATH = "/mnt/data/TPC"
 
 
 def usage(exit_code=1):
     print("USAGE:")
     print("  python writeconfig.py <runtype> <acq_time> <thresholds.json>")
-    print("  python writeconfig.py <runtype> <trigger_style> <acq_time> <thresholds.json>")
+    print("  python writeconfig.py <runtype> <trigger_mode> <acq_time> <thresholds.json>")
     print("")
-    print("  trigger_style: ext | self")
-    print("  default trigger_style is self")
+    print("  trigger_mode: ext | self")
+    print("  default trigger_mode is self")
     print("  rec_len is automatically set:")
     print("    self -> 5")
     print("    ext  -> 25")
@@ -48,10 +48,10 @@ def validate_runtype(runtype):
     return runtype
 
 
-def validate_trigger_style(trigger_style):
-    if trigger_style not in ("ext", "self"):
-        raise ValueError("trigger_style must be 'ext' or 'self'")
-    return trigger_style
+def validate_trigger_mode(trigger_mode):
+    if trigger_mode not in ("ext", "self"):
+        raise ValueError("trigger_mode must be 'ext' or 'self'")
+    return trigger_mode
 
 def load_thresholds(thresholds_path):
     if not os.path.exists(thresholds_path):
@@ -101,27 +101,27 @@ def parse_args(argv):
 
     if len(args) == 3:
         runtype = validate_runtype(args[0])
-        trigger_style = DEFAULT_TRIGGER_STYLE
+        trigger_mode = DEFAULT_TRIGGER_MODE
         acq_time = require_int(args[1], "acq_time")
         thresholds_json = args[2]
-        return runtype, trigger_style, acq_time, thresholds_json
+        return runtype, trigger_mode, acq_time, thresholds_json
 
     if len(args) == 4:
         runtype = validate_runtype(args[0])
-        trigger_style = validate_trigger_style(args[1])
+        trigger_mode = validate_trigger_mode(args[1])
         acq_time = require_int(args[2], "acq_time")
         thresholds_json = args[3]
-        return runtype, trigger_style, acq_time, thresholds_json
+        return runtype, trigger_mode, acq_time, thresholds_json
 
     usage()
 
 
-def get_rec_len_by_trigger_style(trigger_style):
-    if trigger_style == "self":
+def get_rec_len_by_trigger_mode(trigger_mode):
+    if trigger_mode == "self":
         return 5
-    if trigger_style == "ext":
+    if trigger_mode == "ext":
         return 25
-    raise ValueError("trigger_style must be 'ext' or 'self'")
+    raise ValueError("trigger_mode must be 'ext' or 'self'")
 
 
 def get_next_run_id(base_path, runtype):
@@ -207,6 +207,12 @@ def replace_parameters_in_config(para_map, source_config, output_config):
             replacement_value = para_map["EXTERNAL_TRIGGER"]
         elif key == "SELF_TRIGGER":
             replacement_value = para_map["SELF_TRIGGER"]
+        # --- 新增功能：处理 Board 1 在 ext 模式下的禁用 ---
+        elif key == "ENABLE_INPUT":
+            # 判断条件：模式为 ext 且当前属于 Board 1
+            if para_map.get("TRIGGER_STYLE") == "ext" and current_board == 1:
+                replacement_value = "NO"
+        # ----------------------------------------------
         elif key == "TRG_THRESHOLD":
             if current_board is not None and current_channel is not None:
                 pair = (current_board, current_channel)
@@ -245,12 +251,12 @@ def replace_parameters_in_config(para_map, source_config, output_config):
 
 def main():
     try:
-        runtype, trigger_style, acq_time, thresholds_json = parse_args(sys.argv)
+        runtype, trigger_mode, acq_time, thresholds_json = parse_args(sys.argv)
         thresholds = load_thresholds(thresholds_json)
 
-        rec_len = get_rec_len_by_trigger_style(trigger_style)
+        rec_len = get_rec_len_by_trigger_mode(trigger_mode)
 
-        if trigger_style == "self":
+        if trigger_mode == "self":
             external_trigger = "DISABLED"
             self_trigger = "YES"
         else:
@@ -269,6 +275,7 @@ def main():
         outfile_path = raw_dir + "/"
 
         para_map = {
+            "TRIGGER_MODE": trigger_mode,
             "OUTFILE_PATH": outfile_path,
             "OUTFILE_NAME": outfile_name,
             "RECORD_LENGTH": rec_len,
@@ -284,7 +291,7 @@ def main():
         replace_parameters_in_config(para_map, DEFAULT_TEMPLATE, OUTPUT_CONFIG)
 
         print("[OK] runtype        = {}".format(runtype))
-        print("[OK] trigger_style  = {}".format(trigger_style))
+        print("[OK] trigger_mode  = {}".format(trigger_mode))
         print("[OK] rec_len        = {}".format(rec_len))
         print("[OK] acq_time       = {}".format(acq_time))
         print("[OK] starttime      = {}".format(starttime))
