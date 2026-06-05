@@ -55,7 +55,7 @@ ENV:
   DAQ_SESSION        tmux session name, default: daq_hourly
   DAQ_ACQ_TIME       acquisition time (seconds), default: 3600 (self trigger)
                      NOTE: when WRITECONFIG_TRIGGER=ext, acq_time is forced to 
-                     NOTE: when RUNINFO_RUN_TAG is "Test Run" (case-insensitive), acq_time is forced to 3600s
+                     NOTE: when RUNINFO_RUN_TAG is "Test Run" (case-insensitive), acq_time is forced to 1800s
   DAQ_GAP_SECONDS    seconds between runs (self trigger only), default: 5
   DAQ_GRACE_SECONDS  extra timeout after acq_time, default: 180
   DAQ_PROGRAM        DAQ command, default: DAW_Demo
@@ -156,18 +156,20 @@ controller() {
   local grace_seconds="${DAQ_GRACE_SECONDS:-180}"
   local stop_file="${STATE_DIR}/stop"
 
-  # ── Test Run：强制 acq_time=3600s（大小写不敏感）─────────────────
-  local run_tag_upper
-  run_tag_upper="$(echo "${RUNINFO_RUN_TAG}" | tr '[:lower:]' '[:upper:]')"
-  if [ "${run_tag_upper}" = "TEST RUN" ]; then
-    acq_time=3600
-    log "Test Run detected (run_tag='${RUNINFO_RUN_TAG}'): acq_time forced to 3600s"
-  fi
-  # ─────────────────────────────────────────────────────────────────
-
   # ── ext 触发：强制 acq_time=300s，单次采数后退出 session ──────────
   # ── self 触发：保持原有连续循环架构，acq_time 使用 DAQ_ACQ_TIME ───
   local one_shot=0
+
+  # ── Test Run：强制 acq_time=3600s，单次采数后退出（大小写不敏感）──
+  local run_tag_upper
+  run_tag_upper="$(echo "${RUNINFO_RUN_TAG}" | tr '[:lower:]' '[:upper:]')"
+  if [ "${run_tag_upper}" = "TEST RUN" ]; then
+    acq_time=1800
+    one_shot=1
+    log "Test Run detected (run_tag='${RUNINFO_RUN_TAG}'): acq_time forced to 1800s, one-shot enabled"
+  fi
+  # ─────────────────────────────────────────────────────────────────
+
   if [ "${WRITECONFIG_TRIGGER}" = "ext" ]; then
     acq_time=300
     one_shot=1
