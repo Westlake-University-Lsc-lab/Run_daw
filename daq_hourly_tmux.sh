@@ -175,6 +175,13 @@ controller() {
     one_shot=1
     log "ext trigger mode: acq_time forced to 300s, one-shot run enabled"
   fi
+
+  # ── Debug Run：强制 acq_time=3600s，单次采数后退出（大小写不敏感）──
+  if [ "${run_tag_upper}" = "DEBUG" ]; then
+    acq_time=3600
+    one_shot=1
+    log "Debug Run detected (run_tag='${RUNINFO_RUN_TAG}'): acq_time forced to 3600s, one-shot enabled"
+  fi
   # ─────────────────────────────────────────────────────────────────
 
   rm -f "${stop_file}"
@@ -307,7 +314,9 @@ start() {
   # echo "Acq time     : $([ "${WRITECONFIG_TRIGGER}" = "ext" ] && echo "300s (forced, ext trigger)" || echo "${DAQ_ACQ_TIME:-3600}s")"
   local _tag_upper
   _tag_upper="$(echo "${RUNINFO_RUN_TAG}" | tr '[:lower:]' '[:upper:]')"
-  if [ "${_tag_upper}" = "TEST RUN" ]; then
+  if [ "${_tag_upper}" = "DEBUG" ]; then
+    echo "Acq time     : 3600s (forced, Debug Run)"
+  elif [ "${_tag_upper}" = "TEST RUN" ]; then
     echo "Acq time     : 3600s (forced, Test Run)"
   elif [ "${WRITECONFIG_TRIGGER}" = "ext" ]; then
     echo "Acq time     : 300s (forced, ext trigger)"
